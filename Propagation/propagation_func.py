@@ -7,6 +7,13 @@ Created on Fri Jan 25 13:48:41 2019
 Programma che prende in input le immagini (gia` elaborate) e fa la propagazione
 del suo campo. 
 
+(a)Calculating the Fourier transform of H(X,Y)
+(b) Simulating the angular spectrum propagator
+(c) Multiplying the results of (a) and (b)
+(d) Calculating the inverse Fourier transform of (c). The result provides t(x, y).
+
+bg_correct(raw, bg, df=None)
+Correct for noisy images by dividing by a background. The calculation used is (raw-df)/(bg-df).
 """
 
 import sys
@@ -27,17 +34,9 @@ import holopy as hp
 from scipy.misc import fromimage
 from PIL import Image as pilimage
 
-
-
-"""
-(a)Calculating the Fourier transform of H(X,Y)
-(b) Simulating the angular spectrum propagator
-(c) Multiplying the results of (a) and (b)
-(d) Calculating the inverse Fourier transform of (c). The result provides t(x, y).
-"""
   
 
-def trans_func(d, med_wavelength):
+def trans_func(d, med_wavelength, dx, N):
     
     """
     Calculates the optical transfer function to use in reconstruction
@@ -82,7 +81,7 @@ def trans_func(d, med_wavelength):
     #g[np.isnan(g)] = 0 # replace nan's with zeros
 
 
-def propagate(data, d, med_wavelength):
+def propagate(data, d, med_wavelength, dx, N):
     
     """
     Propagates a hologram along the optical axis
@@ -103,7 +102,7 @@ def propagate(data, d, med_wavelength):
        The hologram progagated to a distance d from its current location.
     """
 
-    G = trans_func(d, med_wavelength)
+    G = trans_func(d, med_wavelength, dx, N)
 
     ft_holo=ifftshift(fft2(fftshift(data)))
     
@@ -120,76 +119,3 @@ def propagate(data, d, med_wavelength):
 #        U = xr.concat([data, U], dim='z')
 
 
-if __name__ == '__main__':
-    
-    """
-    PARAMETERS
-    """
-    lamda=0.660
-    med_wavelength=lamda/1.33
-    N=512
-    x = np.linspace(0, N, N)
-    dx=0.0851  #micron
-    
-    k=2*np.pi/med_wavelength
-#    z=np.linspace(0,100,100)
-    
-    """
-    LOAD IMAGE
-    """
-
-    holo_img = Image.open('image01.jpg').convert("L")
-    bg_img=Image.open('bg01.jpg').convert("L")
-    holo_array  = np.asarray(holo_img)
-    bg_array=np.asarray(bg_img)
-    
-    holo=holo_array/bg_array
-#    plt.imshow(holo, 'gray')
-    
-    
-
-    """
-    RECONSTRUCTION
-    """
-
-    z = np.linspace(0, 30, 100)
-
-    phase_arr=np.array([])
-    for i in range(0,len(z)):
-        rec_vol = propagate(holo, z[i], med_wavelength)
-        phase=np.angle(rec_vol[286][253])
-        p=np.angle(np.e**(-1j*2*np.pi*z[i]/(0.66/1.33)))
-        diff=phase-p
-        
-    
-        phase_arr=np.append(phase_arr,diff)
-        phase_arr[phase_arr>np.pi]=0
-        phase_arr[phase_arr<-np.pi]=0    
-
-    plt.plot(z,phase_arr,'*')
-    plt.ylim(-np.pi, np.pi)
-    plt.xlabel('z($\mu$m)')
-    plt.ylabel('$\phi$(U)')
-    plt.show()
-    plt.clf() 
-  
-#    z = np.linspace(16,18,20)
-#    #    
-#
-#    for i in z:
-#        print(i)
-#        rec_vol = propagate(holo, i, med_wavelength)
-#        onda_piana=e**(-1j*i*k)*np.ones((N,N))
-#        plt.imshow(np.angle(rec_vol)-np.angle(onda_piana))
-#        plt.colorbar()
-#        plt.title(i)
-#        plt.show()
-#        plt.clf()
-#    phase=np.array([])
-#    for i in z:
-#        
-#        phase=np.append(phase,np.angle(U[256,256]))
-#    
-#    plt.plot(z,phase)
-#
-#    plt.show()
